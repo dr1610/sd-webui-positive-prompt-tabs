@@ -1,0 +1,20 @@
+.ppt-root { flex: 0 0 auto !important; width: 100%; min-width: 0; position: relative; box-sizing: border-box; }
+.ppt-row { display: flex; align-items: end; gap: 5px; min-width: 0; padding-right: 64px; border-bottom: 1px solid var(--border-color-primary, #888); }
+.ppt-list { display: flex; flex: 0 1 auto; min-width: 0; gap: 4px; overflow-x: auto; padding: 3px 1px 0; }
+.ppt-item { display: flex; flex: 0 0 auto; border: 1px solid var(--border-color-primary, #888); border-bottom: 0; border-radius: 7px 7px 0 0; overflow: hidden; cursor: grab; }
+.ppt-item [role="tab"] { cursor: grab !important; }
+.ppt-item.ppt-dragging { opacity: .45; }
+.ppt-item.ppt-drop-before { box-shadow: -3px 0 0 #559df5; }
+.ppt-item.ppt-drop-after { box-shadow: 3px 0 0 #559df5; }
+.ppt-attached-prompt, .ppt-attached-prompt textarea { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
+.ppt-root .ppt-button { background: var(--button-secondary-background-fill, #eee); color: var(--body-text-color, #222); border: 1px solid var(--border-color-primary, #888); border-radius: 5px; padding: 5px 9px; cursor: pointer; font: inherit; font-size: 13px; white-space: nowrap; }
+.ppt-item .ppt-button { border: 0; border-radius: 0; }
+.ppt-item [role="tab"] { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.ppt-item [aria-selected="true"] { background: var(--button-primary-background-fill, #356bb8); color: var(--button-primary-text-color, white); font-weight: 700; box-shadow: inset 0 -3px 0 currentColor; }
+.ppt-root .ppt-button:hover { filter: brightness(.93); }
+.ppt-root .ppt-button:focus-visible, .ppt-name:focus-visible { outline: 2px solid #559df5; outline-offset: -2px; }
+.ppt-root .ppt-button:disabled { opacity: .4; cursor: default; }
+.ppt-status { font-size: 12px; color: var(--body-text-color, #444); }
+.ppt-status:not(:empty) { padding: 4px 0; }
+.ppt-menu { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px; border: 1px solid var(--border-color-primary, #888); border-radius: 6px; background: var(--block-background-fill, #fafafa); margin-top: 4px; }
+.ppt-name { flex: 1; min-width: 100px; background: var(--input-background-fill, white); color: var(--body-text-color, #222); border: 1px solid #888; border-radius: 4px; padding: 5px; }
