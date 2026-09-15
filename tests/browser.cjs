@@ -97,4 +97,3 @@ const base = path.resolve(__dirname, '..');
   console.log('PASS: real Neo DOM mount, layout, prompt switching, captured generation request A despite later switch to B. No GPU generation performed.');
   await browser.close();
 })().catch(e=>{console.error(e);process.exit(1);});
-
