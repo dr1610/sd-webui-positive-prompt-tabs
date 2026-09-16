@@ -1,4 +1,4 @@
-/* Positive Prompt Tabs 0.1.2 — Forge Neo, browser-local storage. */
+/* Positive Prompt Tabs 0.1.3 — Forge Neo, browser-local storage. */
 (() => {
     'use strict';
     if (window.positivePromptTabs) return;
@@ -117,14 +117,11 @@
             this.deleted.push({tab, index});
             if (this.state.active === id) { this.state.active = this.state.tabs[Math.min(index, this.state.tabs.length - 1)].id; this.apply(); }
             this.save(); this.render();
-            this.status.replaceChildren(document.createTextNode(`「${tab.name}」を削除しました。 `));
-            this.button(this.status, '元に戻す', () => this.undoDelete());
             this.list.querySelector('[aria-selected="true"]')?.focus();
         }
         undoDelete() {
             const entry = this.deleted.pop(); if (!entry) return;
             this.capture(); this.state.tabs.splice(entry.index, 0, entry.tab); this.select(entry.tab.id);
-            this.status.textContent = `「${entry.tab.name}」を復元しました。`;
         }
         move(id, index) {
             this.capture(); const old = this.state.tabs.findIndex(t => t.id === id);

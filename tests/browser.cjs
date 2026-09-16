@@ -32,7 +32,7 @@ const base = path.resolve(__dirname, '..');
   await root.getByRole('textbox',{name:'タブ名'}).fill('<人物A>'); await root.getByRole('textbox',{name:'タブ名'}).press('Enter');
   assert.equal(await tab('<人物A>').count(),1);
   await menu('<人物A>').click(); await root.getByRole('button',{name:'削除',exact:true}).click();
-  await root.getByRole('button',{name:'元に戻す',exact:true}).click(); assert.equal(await area.inputValue(),'copy');
+  await root.locator('.ppt-row').getByRole('button',{name:'最後に削除したタブを復元',exact:true}).click(); assert.equal(await area.inputValue(),'copy');
   await menu('<人物A>').click(); await root.getByRole('button',{name:'左へ移動',exact:true}).click();
   assert.equal(await root.getByRole('tab').first().textContent(),'<人物A>');
   // Exercise actual mouse drag, including both directions and text preservation.
