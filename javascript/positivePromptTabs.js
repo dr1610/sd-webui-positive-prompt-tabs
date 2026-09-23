@@ -1,8 +1,51 @@
-/* Positive Prompt Tabs 0.1.3 — Forge Neo, browser-local storage. */
+/* Positive Prompt Tabs 0.1.4 — Forge Neo, browser-local storage. */
 (() => {
     'use strict';
     if (window.positivePromptTabs) return;
     const instances = new Map();
+    const negatives = new Map();
+    class SavedNegative {
+        constructor(mode, area) {
+            this.area = area;
+            this.key = `positive-prompt-tabs:negative:v1:${location.pathname}:${mode}`;
+            this.blocked = false;
+            this.last = undefined;
+            try {
+                const raw = localStorage.getItem(this.key);
+                if (raw !== null) {
+                    const saved = JSON.parse(raw);
+                    if (saved?.version !== 1 || typeof saved.text !== 'string') throw new Error('Invalid saved negative');
+                    // Preserve text already supplied by Neo / another extension.
+                    if (!area.value) {
+                        area.value = saved.text;
+                        area.dispatchEvent(new Event('input', {bubbles: true}));
+                    }
+                }
+            } catch (error) {
+                this.blocked = true;
+                console.warn('Positive Prompt Tabs negative storage:', error);
+                this.report(mode, 'ネガティブの保存データを読み込めません。上書きを停止しています。');
+            }
+            const host = area.closest(`#${mode}_neg_prompt`);
+            host.addEventListener('input', () => this.save(mode), true);
+            host.addEventListener('change', () => this.save(mode), true);
+            window.addEventListener('pagehide', () => this.save(mode));
+            this.save(mode);
+        }
+        report(mode, message) {
+            const status = instances.get(mode)?.status;
+            if (status) status.textContent = message;
+        }
+        save(mode) {
+            if (this.blocked || !this.area.isConnected || this.area.value === this.last) return;
+            try {
+                localStorage.setItem(this.key, JSON.stringify({version: 1, text: this.area.value}));
+                this.last = this.area.value;
+            } catch (error) {
+                this.report(mode, 'ネガティブを自動保存できません。ページを閉じる前に文章を控えてください。');
+            }
+        }
+    }
     const make = (tag, cls, text) => {
         const el = document.createElement(tag);
         if (cls) el.className = cls;
@@ -212,8 +255,13 @@
         for (const mode of ['txt2img', 'img2img']) {
             const area = app.querySelector(`#${mode}_prompt textarea`);
             if (area && !instances.has(mode)) instances.set(mode, new PromptTabs(mode, area));
+            const negative = app.querySelector(`#${mode}_neg_prompt textarea`);
+            if (negative && !negatives.has(mode)) negatives.set(mode, new SavedNegative(mode, negative));
         }
     }
+    // Gradio server outputs (styles / PNG info) can set .value without input events.
+    // Only write storage when the actual text changes.
+    setInterval(() => { for (const [mode, saved] of negatives) saved.save(mode); }, 500);
     window.positivePromptTabs = {mount};
     if (typeof onUiLoaded === 'function') onUiLoaded(mount);
     if (typeof onUiUpdate === 'function') onUiUpdate(mount);

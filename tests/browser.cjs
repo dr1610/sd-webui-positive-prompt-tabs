@@ -10,6 +10,8 @@ const base = path.resolve(__dirname, '..');
   await page.route('http://localhost:19999/**', r => r.fulfill({contentType: 'text/html', body: `<!doctype html><html><body>
   <div id="txt2img_prompt_row" style="display:flex"><div id="txt2img_prompt"><textarea>original</textarea></div></div>
   <div id="img2img_prompt_row" style="display:flex"><div id="img2img_prompt"><textarea></textarea></div></div>
+  <div id="txt2img_neg_prompt"><textarea></textarea></div>
+  <div id="img2img_neg_prompt"><textarea></textarea></div>
   <button id="generate">Generate</button><script>
   window.sent=[];window.bound='original';document.querySelector('#txt2img_prompt textarea').addEventListener('input',e=>window.bound=e.target.value);
   document.querySelector('#generate').onclick=()=>window.sent.push(window.bound);
@@ -19,8 +21,12 @@ const base = path.resolve(__dirname, '..');
   const root = page.locator('.ppt-root').first();
   const area = page.locator('#txt2img_prompt textarea');
   const tab = name => root.getByRole('tab', {name, exact:true});
-  const menu = name => root.getByRole('button',{name:`${name}の操作`,exact:true});
+  const menu = name => root.getByRole('button',{name:`${name}の操作`,exact:true}).first();
   assert.equal(await root.getByRole('tab').count(), 3);
+  const neg = page.locator('#txt2img_neg_prompt textarea');
+  const i2iNeg = page.locator('#img2img_neg_prompt textarea');
+  await neg.fill('共通 negative, (bad hands:1.2)');
+  await i2iNeg.fill('i2i only');
   await area.fill('A 日本語 🌸'); await tab('タブ2').click(); await area.fill('B');
   await page.locator('#generate').click(); await tab('タブ1').click();
   assert.equal(await area.inputValue(),'A 日本語 🌸');
@@ -46,6 +52,13 @@ const base = path.resolve(__dirname, '..');
   await root.getByRole('button',{name:'タブを追加',exact:true}).click(); assert.equal(await area.inputValue(),'');
   await area.fill('persist');
   await init(); assert.equal(await area.inputValue(),'persist');
+  assert.equal(await neg.inputValue(), '共通 negative, (bad hands:1.2)');
+  assert.equal(await i2iNeg.inputValue(), 'i2i only');
+  await neg.evaluate(el => { el.value = 'server style result'; });
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('positive-prompt-tabs:negative:v1:/:txt2img')).text === 'server style result');
+  await init(); assert.equal(await neg.inputValue(), 'server style result');
+  await neg.fill(''); await init(); assert.equal(await neg.inputValue(), '');
+  assert.equal(await i2iNeg.inputValue(), 'i2i only');
   assert.equal(await root.getByRole('tab').first().textContent(),'<人物A>');
   assert.equal(await page.locator('#img2img_prompt textarea').inputValue(),'');
   // External extensions / PNG transfer modify the existing field.
