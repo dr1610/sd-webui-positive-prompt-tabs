@@ -13,8 +13,11 @@ const base = path.resolve(__dirname, '..');
   <div id="txt2img_neg_prompt"><textarea></textarea></div>
   <div id="img2img_neg_prompt"><textarea></textarea></div>
   <button id="txt2img_generate">Generate</button><script>
-  window.sent=[];window.bound='original';document.querySelector('#txt2img_prompt textarea').addEventListener('input',e=>window.bound=e.target.value);
-  document.querySelector('#txt2img_generate').onclick=()=>window.sent.push(window.bound);
+  window.sent=[];window.sentNegative=[];window.bound='original';window.boundNegative='';window.updateInputCalls=0;
+  window.updateInput=target=>{window.updateInputCalls++;const e=new Event('input',{bubbles:true});Object.defineProperty(e,'target',{value:target});target.dispatchEvent(e);};
+  document.querySelector('#txt2img_prompt textarea').addEventListener('input',e=>window.bound=e.target.value);
+  document.querySelector('#txt2img_neg_prompt textarea').addEventListener('input',e=>window.boundNegative=e.target.value);
+  document.querySelector('#txt2img_generate').onclick=()=>{window.sent.push(window.bound);window.sentNegative.push(window.boundNegative);};
   </script></body></html>`}));
   async function init() { await page.goto('http://localhost:19999'); await page.addStyleTag({path:path.join(base,'style.css')}); await page.addScriptTag({path:path.join(base,'javascript/positivePromptTabs.js')}); }
   await init();
@@ -34,9 +37,13 @@ const base = path.resolve(__dirname, '..');
   // Simulate another extension changing the DOM value without notifying
   // Gradio. The generation capture hook must publish that visible value.
   await area.evaluate(el => { el.value = 'late external edit'; });
+  await neg.evaluate(el => { el.value = 'late negative edit'; });
   await page.locator('#txt2img_generate').click();
   assert.deepEqual(await page.evaluate(()=>sent),['B', 'late external edit']);
+  assert.deepEqual(await page.evaluate(()=>sentNegative),['共通 negative, (bad hands:1.2)', 'late negative edit']);
+  assert.ok(await page.evaluate(()=>updateInputCalls) > 0, 'Neo updateInput must be used');
   await area.fill('A 日本語 🌸');
+  await neg.fill('共通 negative, (bad hands:1.2)');
   await menu('タブ1').click(); await root.getByRole('button',{name:'複製',exact:true}).click();
   assert.equal(await area.inputValue(),'A 日本語 🌸');
   await area.fill('copy'); await tab('タブ1').click(); assert.equal(await area.inputValue(),'A 日本語 🌸');
@@ -92,6 +99,9 @@ const base = path.resolve(__dirname, '..');
   await live.locator('#txt2img_prompt textarea').fill('PPT test B');
   await liveRoot.getByRole('tab',{name:'タブ1',exact:true}).click();
   assert.equal(await live.locator('#txt2img_prompt textarea').inputValue(),'PPT test A');
+  // Bypass normal input events to reproduce extensions that only update the
+  // visible DOM. The generation hook must still publish this negative prompt.
+  await live.locator('#txt2img_neg_prompt textarea').evaluate(el => { el.value = 'PPT test negative'; });
   const bounds = await liveRoot.boundingBox();
   const fieldBounds = await live.locator('#txt2img_prompt textarea').boundingBox();
   assert.ok(bounds.y + bounds.height <= fieldBounds.y + 2, 'Tabs must be above prompt');
@@ -111,6 +121,7 @@ const base = path.resolve(__dirname, '..');
   await live.waitForFunction(()=>document.querySelector('#txt2img_prompt textarea').value==='PPT test B');
   for (let n=0;n<40 && !submitted;n++) await new Promise(r=>setTimeout(r,100));
   assert.ok(submitted, 'Actual Neo generation payload contains clicked tab A');
+  assert.ok(submitted.data.includes('PPT test negative'), 'Actual Neo generation payload contains synchronized negative prompt');
   assert.ok(!submitted.data.includes('PPT test B'), 'Later tab switch cannot change request');
   await liveRoot.getByRole('tab',{name:'タブ1',exact:true}).click();
   console.log('PASS: real Neo DOM mount, layout, prompt switching, captured generation request A despite later switch to B. No GPU generation performed.');

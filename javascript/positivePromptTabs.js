@@ -1,9 +1,20 @@
-/* Positive Prompt Tabs 0.1.5 — Forge Neo, browser-local storage. */
+/* Positive Prompt Tabs 0.1.6 — Forge Neo, browser-local storage. */
 (() => {
     'use strict';
     if (window.positivePromptTabs) return;
     const instances = new Map();
     const negatives = new Map();
+    const notifyInput = area => {
+        // Neo's updateInput supplies the event shape Gradio expects. A plain
+        // input event can change only the visible textarea value.
+        if (typeof window.updateInput === 'function') {
+            window.updateInput(area);
+            return;
+        }
+        const event = new Event('input', {bubbles: true});
+        Object.defineProperty(event, 'target', {value: area});
+        area.dispatchEvent(event);
+    };
     class SavedNegative {
         constructor(mode, area) {
             this.area = area;
@@ -18,7 +29,7 @@
                     // Preserve text already supplied by Neo / another extension.
                     if (!area.value) {
                         area.value = saved.text;
-                        area.dispatchEvent(new Event('input', {bubbles: true}));
+                        notifyInput(area);
                     }
                 }
             } catch (error) {
@@ -44,6 +55,11 @@
             } catch (error) {
                 this.report(mode, 'ネガティブを自動保存できません。ページを閉じる前に文章を控えてください。');
             }
+        }
+        commitForGeneration(mode) {
+            this.save(mode);
+            notifyInput(this.area);
+            this.area.dispatchEvent(new Event('change', {bubbles: true}));
         }
     }
     const make = (tag, cls, text) => {
@@ -135,7 +151,7 @@
             this.writing = true;
             try {
                 this.area.value = this.current().text;
-                this.area.dispatchEvent(new Event('input', {bubbles: true}));
+                notifyInput(this.area);
                 this.area.dispatchEvent(new Event('change', {bubbles: true}));
             } finally { this.writing = false; }
             this.save();
@@ -149,8 +165,8 @@
             this.writing = true;
             try {
                 this.area.value = this.current().text;
-                // Plain input also cancels pending Neo prompt debounce events.
-                this.area.dispatchEvent(new Event('input', {bubbles: true}));
+                // Use Neo's bridge so Gradio and the token counter see the value.
+                notifyInput(this.area);
             } finally { this.writing = false; }
         }
         select(id) {
@@ -277,6 +293,7 @@
         if (!button) return;
         const mode = button.id.startsWith('img2img_') ? 'img2img' : 'txt2img';
         instances.get(mode)?.commitForGeneration();
+        negatives.get(mode)?.commitForGeneration(mode);
     }
     // Gradio server outputs (styles / PNG info) can set .value without input events.
     // Only write storage when the actual text changes.

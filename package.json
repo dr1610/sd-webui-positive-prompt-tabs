@@ -1,6 +1,6 @@
 {
   "name": "sd-webui-positive-prompt-tabs",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "Positive prompt tabs for Forge Neo",
   "license": "MIT",
