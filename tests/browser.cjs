@@ -12,9 +12,9 @@ const base = path.resolve(__dirname, '..');
   <div id="img2img_prompt_row" style="display:flex"><div id="img2img_prompt"><textarea></textarea></div></div>
   <div id="txt2img_neg_prompt"><textarea></textarea></div>
   <div id="img2img_neg_prompt"><textarea></textarea></div>
-  <button id="generate">Generate</button><script>
+  <button id="txt2img_generate">Generate</button><script>
   window.sent=[];window.bound='original';document.querySelector('#txt2img_prompt textarea').addEventListener('input',e=>window.bound=e.target.value);
-  document.querySelector('#generate').onclick=()=>window.sent.push(window.bound);
+  document.querySelector('#txt2img_generate').onclick=()=>window.sent.push(window.bound);
   </script></body></html>`}));
   async function init() { await page.goto('http://localhost:19999'); await page.addStyleTag({path:path.join(base,'style.css')}); await page.addScriptTag({path:path.join(base,'javascript/positivePromptTabs.js')}); }
   await init();
@@ -28,9 +28,15 @@ const base = path.resolve(__dirname, '..');
   await neg.fill('共通 negative, (bad hands:1.2)');
   await i2iNeg.fill('i2i only');
   await area.fill('A 日本語 🌸'); await tab('タブ2').click(); await area.fill('B');
-  await page.locator('#generate').click(); await tab('タブ1').click();
+  await page.locator('#txt2img_generate').click(); await tab('タブ1').click();
   assert.equal(await area.inputValue(),'A 日本語 🌸');
   assert.deepEqual(await page.evaluate(()=>sent),['B']);
+  // Simulate another extension changing the DOM value without notifying
+  // Gradio. The generation capture hook must publish that visible value.
+  await area.evaluate(el => { el.value = 'late external edit'; });
+  await page.locator('#txt2img_generate').click();
+  assert.deepEqual(await page.evaluate(()=>sent),['B', 'late external edit']);
+  await area.fill('A 日本語 🌸');
   await menu('タブ1').click(); await root.getByRole('button',{name:'複製',exact:true}).click();
   assert.equal(await area.inputValue(),'A 日本語 🌸');
   await area.fill('copy'); await tab('タブ1').click(); assert.equal(await area.inputValue(),'A 日本語 🌸');
@@ -70,7 +76,7 @@ const base = path.resolve(__dirname, '..');
   const last=await root.getByRole('tab').first().textContent(); await menu(last).click();
   assert.equal(await root.getByRole('button',{name:'削除',exact:true}).isDisabled(),true);
   assert.deepEqual(errors,[]);
-  console.log('PASS: tab isolation, generation snapshot, duplicate, rename, delete/restore, reorder, add, reload, mode isolation, external input, last-tab guard.');
+  console.log('PASS: tab isolation, generation sync/snapshot, duplicate, rename, delete/restore, reorder, add, reload, mode isolation, external input, last-tab guard.');
   if (!process.env.PPT_NEO_URL) { await browser.close(); return; }
   // Inspect the actual Neo page in a separate browser context, without generating images.
   const live = await browser.newPage();
